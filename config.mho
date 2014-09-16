@@ -1,0 +1,38 @@
+// install 'lib' hub:
+require('./modules/hub');
+
+@ = require(['mho:std', 'mho:server', 'mho:server/route']);
+
+exports.serve = function(args) {
+
+  var routes = [
+    // __mho, etc:
+    @SystemRoutes(),
+    // __flux:
+    @CodeDirectory('__flux/', "#{@env.configRoot()}node_modules/flux/"),
+    // docs (should only be served locally)
+    @DocumentationBrowser('doc', [
+      {
+        name: 'flux:',
+        path: "#{@env.configRoot()}node_modules/flux/",
+        serve: true
+      },
+      {
+        name: 'lib:',
+        path: require.url('lib:') .. @url.toPath,
+        serve: true
+      }
+    ]),
+    // frontend modules:
+    @ExecutableDirectory(/^\/?/, "#{@env.configRoot()}modules/frontend")
+  ];
+
+
+  @run([
+    {
+      address: @Port(6060),
+      routes: routes
+    }
+  ]);
+
+};

@@ -1,0 +1,8 @@
+{
+  "name": "flux-test",
+  "version" : "0.1.0-1-development",
+  "private" : true,
+  "dependencies": {
+    "flux": "git://github.com/onilabs/flux.git"
+  }
+}

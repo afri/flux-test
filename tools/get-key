@@ -1,0 +1,25 @@
+#!/usr/bin/env conductance
+
+// install 'lib' hub:
+require('../modules/hub');
+
+@ = require(['mho:std', {id:'lib:backend/keychain', name:'keychain'}]);
+
+//----------------------------------------------------------------------
+
+function usage() {
+"
+get-key key password
+
+Retrieves an encrypted value from the app's keychain
+" .. process.stdout.write;
+  process.exit(0);
+}
+
+//----------------------------------------------------------------------
+
+if (@argv() .. @count !== 2) usage();
+
+var [key, password] = @argv();
+
+process.stdout.write(@keychain.get(key, password .. @keychain.derivePassword));
