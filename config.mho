@@ -1,9 +1,36 @@
 // install 'lib' hub:
 require('./modules/hub');
+// install 'flux' hub:
+require.hubs.push(['flux:', require.url('./node_modules/flux/')]);
 
-@ = require(['mho:std', 'mho:server', 'mho:server/route']);
+@ = require(['mho:std', 'mho:server', 'mho:server/route', 
+             {id:'lib:backend/keychain', name:'keychain'}]);
+
+
+//----------------------------------------------------------------------
+
+
+function usage() {
+"
+conductance serve config.mho password 
+
+Serves the demo app on port 6060
+" .. process.stdout.write;
+  process.exit(0);
+}
+
+
+//----------------------------------------------------------------------
 
 exports.serve = function(args) {
+
+  if (args.length !== 1) usage();
+  
+  // init the db
+  var password = args[0] .. @keychain.derivePassword;
+  require('lib:backend/db').initDB(password);
+  
+
 
   var routes = [
     // __mho, etc:
@@ -23,6 +50,8 @@ exports.serve = function(args) {
         serve: true
       }
     ]),
+    // __schema:
+    @CodeDirectory('__schema/', "#{@env.configRoot()}modules/schema/client/"),
     // frontend modules:
     @ExecutableDirectory(/^\/?/, "#{@env.configRoot()}modules/frontend")
   ];

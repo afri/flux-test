@@ -25,7 +25,13 @@ exports.get = function(key, password) {
     |itf|
     rv = String(itf.get(key));
   }
-  rv = @sjcl.decrypt(password, rv);
+  try {
+    rv = @sjcl.decrypt(password, rv);
+  }
+  catch(e) { 
+    // sjcl doesn't throw typeof Error *sigh*
+    throw new Error(e); 
+  }
   return rv;
 };
 

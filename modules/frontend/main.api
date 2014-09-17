@@ -1,0 +1,6 @@
+@ = require([
+  'mho:std',
+  {id:'lib:backend/db', name:'db'}
+]);
+
+exports.getDB = @db.getClientDB;

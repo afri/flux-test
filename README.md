@@ -17,6 +17,10 @@
 
   - Think of a WITTY_PASSWORD
 
+  - Import google project *id* (not the project *name*) into the keychain:
+
+      echo my-project-id | flux-test/tools/add-key gcd.project WITTY_PASSWORD
+
   - Import service account name into keychain:
 
       echo <long-id>@developer.gserviceaccount.com | flux-test/tools/add-key gcd.email WITTY_PASSWORD

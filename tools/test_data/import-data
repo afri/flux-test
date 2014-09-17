@@ -1,0 +1,122 @@
+#!/usr/bin/env conductance
+
+// install 'lib' hub:
+require('../../modules/hub');
+// install 'flux' hub:
+require.hubs.push(['flux:', require.url('../../node_modules/flux/')]);
+
+@ = require(['mho:std', 
+             {id:'lib:schema/complete/current', name:'schema'},
+             {id:'lib:schema/complete/constraint-filter', name:'constraints'},
+             {id:'lib:backend/keychain', name:'keychain'},
+             {id:'flux:gcd', name:'gcd'}
+            ]);
+
+//----------------------------------------------------------------------
+
+function usage() {
+"
+import-data password 
+
+Imports the chicago_employees sample data into GCD
+" .. process.stdout.write;
+  process.exit(0);
+}
+
+//----------------------------------------------------------------------
+
+if (@argv() .. @count !== 1) usage();
+
+var [password] = @argv();
+
+password = password .. @keychain.derivePassword;
+
+var data = @fs.readFile(require.url('./chicago_employees.json') .. @url.toPath) ..
+    JSON.parse;
+
+var schema = @schema.Schema();
+
+var gcd = @gcd.GoogleCloudDatastore(
+  {
+    context: {
+      dataset: @keychain.get('gcd.project', password) .. @rstrip('\n'),
+      email:   @keychain.get('gcd.email', password) .. @rstrip('\n'),
+      key:     @keychain.get('gcd.key', password) .. @rstrip('\n')
+    },
+    schemas: schema
+  }
+);
+
+// access gcd through the constraint filter that will uphold 'unique'
+// constraints: XXX this makes writes *very* slow (maybe 1-2 per
+// second), and if we attempt to concurrently write stuff,
+// transactions will time out. So for the *initial* import it's a good
+// idea to talk to gcd directly
+gcd = @constraints.Filter(gcd, schema);
+
+
+// import employees:
+data.data .. @each {
+  |[index, , , , , , , , name, position, department, salary]|
+  var [last_name, first_name] = name.split(',');
+  first_name = first_name .. @lstrip;
+  try {
+    gcd.write({
+      data: {
+        first_name: first_name,
+        position: position,
+        department: department,
+        salary: salary,
+        last_name: last_name,
+        import_date: new Date(),
+        import_id: index
+      },
+      schema: 'Employee'
+    });
+  }
+  catch (e) {
+    if (String(e).indexOf('Uniqueness constraint') !== -1) {
+      console.log("record #{index} previously imported");
+      continue;
+    }
+    throw e;
+  }
+  console.log("imported #{index}");
+}
+
+
+// we've imported all employees; now go through database and construct Department list:
+var departments = {};
+gcd.query({schema:'Employee'}) .. 
+  @unpack .. 
+  @transform.par.unordered(descr -> gcd.read(descr).data) .. 
+  @filter(x->!!x && x.department) ..
+  @indexed ..
+  @each {
+    |[count, {department}]|
+    if (count % 1000 === 0) process.stdout.write('.');
+    departments[department] = true;
+  }
+
+// write Department data:
+departments .. @ownKeys .. @each {
+  |name|
+  try {
+    gcd.write({
+      data: {
+        name: name
+      },
+      schema: 'Department'
+    });
+  }
+  catch (e) {
+    if (String(e).indexOf('Uniqueness constraint') !== -1) {
+      console.log("Department record '#{name}' previously imported"); 
+      continue;
+    }
+    throw e;
+  }
+}
+
+
+console.log("all done");
